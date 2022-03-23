@@ -12,7 +12,6 @@ services:
   
   health:
     image: busybox
-    command: id
     depends_on:
       latest:
         condition: service_healthy
