@@ -9,6 +9,7 @@ DOCKER_USER = $(shell whoami)
 base:
 	@docker build -t ${PROJECT}-${ENV}-${SERVICE}:base -f docker/base/Dockerfile .
 	@docker build --build-arg IMAGE=${PROJECT}-${ENV}-${SERVICE}:base -t ${PROJECT}-${ENV}-${SERVICE}:build -f docker/build/Dockerfile .
+	@docker build --build-arg IMAGE=${PROJECT}-${ENV}-${SERVICE}:base -t ${PROJECT}-${ENV}-${SERVICE}:test -f docker/test/Dockerfile .
 
 file_passwd:
 	@echo 'DOCKER_USER:x:DOCKER_UID:DOCKER_GID::/app:/sbin/nologin' > passwd
@@ -20,4 +21,19 @@ build: file_passwd
 	docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" -v "${PWD}"/passwd:/etc/passwd:ro -v "${PWD}"/app:/app ${PROJECT}-${ENV}-${SERVICE}:build
 
 release:
-	@docker build --build-arg IMAGE=${PROJECT}-${ENV}-${SERVICE}:base -t ${PROJECT}-${ENV}-${SERVICE}:latest -f docker/latest/Dockerfile .
+	@docker build --build-arg IMAGE=${PROJECT}-${ENV}-${SERVICE}:base -t ${PROJECT}-${ENV}-${SERVICE}:release -f docker/latest/Dockerfile .
+
+postman:
+	@rm -rf test/tmp/ && mkdir -p test/tmp/
+	@cp test/postman_collection.json test/tmp/postman_collection.json
+#	iniciando compose
+	@export IMAGE=${PROJECT}-${ENV}-${SERVICE}:release && \
+	  docker-compose -p "${PROJECT}-${ENV}-${SERVICE}" -f docker-compose.yml up -d
+#	capturando ip
+	@CONTAINER_IP=$$(docker inspect $$(docker-compose -p ${PROJECT}-${ENV}-${SERVICE} ps -q latest) | jq '.[].NetworkSettings.Networks."'${PROJECT}-${ENV}-${SERVICE}'_default".IPAddress' | cut -d '"' -f 2); \
+	sed -i 's|{{CONTAINER_IP}}|'$$CONTAINER_IP'|g' test/tmp/postman_collection.json
+#	iniciando pruebas
+	@docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" --network=${PROJECT}-${ENV}-${SERVICE}_default -v "${PWD}"/passwd:/etc/passwd:ro -v "${PWD}"/test:/app ${PROJECT}-${ENV}-${SERVICE}:test
+#	deteniendo compose
+	@export IMAGE=${PROJECT}-${ENV}-${SERVICE}:release && \
+	  docker-compose -p "${PROJECT}-${ENV}-${SERVICE}" -f docker-compose.yml down
