@@ -15,4 +15,4 @@ ENV SONAR_ORGANIZATION=${SONAR_ORGANIZATION}
 ENV SONAR_TOKEN=${SONAR_TOKEN}
 
 WORKDIR /app
-CMD /sonar-scanner/bin/sonar-scanner -Dsonar.projectKey=${SONAR_PROJECT} -Dsonar.organization=${SONAR_ORGANIZATION} -Dsonar.sources=. -Dsonar.host.url=https://sonarcloud.io
+CMD /sonar-scanner/bin/sonar-scanner -Dsonar.projectKey=${SONAR_PROJECT} -Dsonar.organization=${SONAR_ORGANIZATION} -Dsonar.sources=. -Dsonar.host.url=https://sonarcloud.io -Dsonar.exclusions=.scannerwork/ -Dsonar.exclusions=node_modules/ -Dsonar.exclusions=.npm/

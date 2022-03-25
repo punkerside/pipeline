@@ -7,8 +7,12 @@ DOCKER_GID  = $(shell id -g)
 DOCKER_USER = $(shell whoami)
 
 SONAR_PROJECT      = ${PROJECT}-${ENV}-${SERVICE}
-SONAR_ORGANIZATION = punkerside-github
-SONAR_TOKEN        = 64b6f************
+
+file_passwd:
+	@echo 'DOCKER_USER:x:DOCKER_UID:DOCKER_GID::/app:/sbin/nologin' > passwd
+	@sed -i 's/DOCKER_USER/'"${DOCKER_USER}"'/g' passwd
+	@sed -i 's/DOCKER_UID/'"${DOCKER_UID}"'/g' passwd
+	@sed -i 's/DOCKER_GID/'"${DOCKER_GID}"'/g' passwd
 
 base:
 	@docker build -t ${PROJECT}-${ENV}-${SERVICE}:base -f docker/base/Dockerfile .
@@ -17,19 +21,23 @@ base:
 	@docker build -t ${PROJECT}-${ENV}-${SERVICE}:sonar -f docker/sonar/Dockerfile .
 	@docker build -t ${PROJECT}-${ENV}-${SERVICE}:snyk -f docker/snyk/Dockerfile .
 
-file_passwd:
-	@echo 'DOCKER_USER:x:DOCKER_UID:DOCKER_GID::/app:/sbin/nologin' > passwd
-	@sed -i 's/DOCKER_USER/'"${DOCKER_USER}"'/g' passwd
-	@sed -i 's/DOCKER_UID/'"${DOCKER_UID}"'/g' passwd
-	@sed -i 's/DOCKER_GID/'"${DOCKER_GID}"'/g' passwd
-
 build: file_passwd
-	docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" -v "${PWD}"/passwd:/etc/passwd:ro -v "${PWD}"/app:/app ${PROJECT}-${ENV}-${SERVICE}:build
+	@docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" -v "${PWD}"/passwd:/etc/passwd:ro -v "${PWD}"/app:/app ${PROJECT}-${ENV}-${SERVICE}:build
+
+sonar: file_passwd
+	@[ "${SONAR_ORGANIZATION}" ] && echo "var SONAR_ORGANIZATION is set" || ( echo "var SONAR_ORGANIZATION is not set"; exit 1 )
+	@[ "${SONAR_TOKEN}" ] && echo "var SONAR_TOKEN is set" || ( echo "var SONAR_TOKEN is not set"; exit 1 )
+	@docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" --env SONAR_PROJECT=${SONAR_PROJECT} --env SONAR_ORGANIZATION=${SONAR_ORGANIZATION} --env SONAR_TOKEN=${SONAR_TOKEN} -v "${PWD}"/passwd:/etc/passwd:ro -v "${PWD}"/app:/app ${PROJECT}-${ENV}-${SERVICE}:sonar
+
+snyk: file_passwd
+	@[ "${SNYK_TOKEN}" ] && echo "var SNYK_TOKEN is set" || ( echo "var SNYK_TOKEN is not set"; exit 1 )
+	@docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" -v "${PWD}"/passwd:/etc/passwd:ro -v "${PWD}"/app:/app ${PROJECT}-${ENV}-${SERVICE}:snyk auth ${SNYK_TOKEN}
+	@docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" -v "${PWD}"/passwd:/etc/passwd:ro -v "${PWD}"/app:/app ${PROJECT}-${ENV}-${SERVICE}:snyk test
 
 release:
 	@docker build --build-arg IMAGE=${PROJECT}-${ENV}-${SERVICE}:base -t ${PROJECT}-${ENV}-${SERVICE}:release -f docker/latest/Dockerfile .
 
-postman:
+postman: file_passwd
 	@rm -rf test/tmp/ && mkdir -p test/tmp/
 	@cp test/postman_collection.json test/tmp/postman_collection.json
 #	iniciando compose
@@ -44,16 +52,12 @@ postman:
 	@export IMAGE=${PROJECT}-${ENV}-${SERVICE}:release && \
 	  docker-compose -p "${PROJECT}-${ENV}-${SERVICE}" -f docker-compose.yml down
 
-sonar:
-	docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" --env SONAR_PROJECT=${SONAR_PROJECT} --env SONAR_ORGANIZATION=${SONAR_ORGANIZATION} --env SONAR_TOKEN=${SONAR_TOKEN} -v "${PWD}"/passwd:/etc/passwd:ro -v "${PWD}"/app:/app ${PROJECT}-${ENV}-${SERVICE}:sonar
-
-snyk:
-	docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" -e SNYK_TOKEN="${SNYK_TOKEN}" -v "${PWD}"/passwd:/etc/passwd:ro -v "${PWD}"/app:/app ${PROJECT}-${ENV}-${SERVICE}:snyk
-
 destroy:
-	rm -rf app/.config/
-	rm -rf app/.npm/
-	rm -rf app/.scannerwork/
-	rm -rf app/.sonar/
-	rm -rf app/node_modules/
-	rm -rf app/package-lock.json/
+	@rm -rf app/.config/
+	@rm -rf app/.npm/
+	@rm -rf app/.scannerwork/
+	@rm -rf app/.sonar/
+	@rm -rf app/node_modules/
+	@rm -rf app/package-lock.json
+	@rm -rf test/tmp/
+	@rm -rf passwd
