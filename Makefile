@@ -1,7 +1,8 @@
-PROJECT = sandbox
+PROJECT = falcon
 ENV     = lab
 SERVICE = api
 
+AWS_REGION      = us-east-1
 DOCKER_UID      = $(shell id -u)
 DOCKER_GID      = $(shell id -g)
 DOCKER_USER     = $(shell whoami)
@@ -20,6 +21,7 @@ base:
 	@docker build --build-arg IMAGE=${PROJECT}-${ENV}-${SERVICE}:base -t ${PROJECT}-${ENV}-${SERVICE}:postman -f docker/postman/Dockerfile .
 	@docker build -t ${PROJECT}-${ENV}-${SERVICE}:sonar -f docker/sonar/Dockerfile .
 	@docker build -t ${PROJECT}-${ENV}-${SERVICE}:snyk -f docker/snyk/Dockerfile .
+	@docker build -t ${PROJECT}-${ENV}-${SERVICE}:terraform -f docker/terraform/Dockerfile .
 
 build: file_passwd
 	@docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" -v "${PWD}"/passwd:/etc/passwd:ro -v "${PWD}"/app:/app ${PROJECT}-${ENV}-${SERVICE}:build
@@ -61,7 +63,13 @@ publish:
 	@docker push punkerside/${PROJECT}-${ENV}-${SERVICE}:latest
 	@docker push punkerside/${PROJECT}-${ENV}-${SERVICE}:${BUILD_TIMESTAMP}
 
+terraform: file_passwd
+	@docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" -v "${PWD}"/passwd:/etc/passwd:ro -v "${PWD}"/terraform:/app ${PROJECT}-${ENV}-${SERVICE}:terraform init
+	@docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" -v "${PWD}"/passwd:/etc/passwd:ro -v "${PWD}"/terraform:/app -v /home/${USER}/.aws/credentials:/tmp/.aws/credentials:ro -e AWS_CONFIG_FILE=/tmp/.aws/credentials -e AWS_DEFAULT_REGION=${AWS_REGION} ${PROJECT}-${ENV}-${SERVICE}:terraform plan -var="project=${PROJECT}" -var="service=${SERVICE}" -var="env=${ENV}"
+	@docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" -v "${PWD}"/passwd:/etc/passwd:ro -v "${PWD}"/terraform:/app -v /home/${USER}/.aws/credentials:/tmp/.aws/credentials:ro -e AWS_CONFIG_FILE=/tmp/.aws/credentials -e AWS_DEFAULT_REGION=${AWS_REGION} ${PROJECT}-${ENV}-${SERVICE}:terraform apply -var="project=${PROJECT}" -var="service=${SERVICE}" -var="env=${ENV}" -auto-approve
+
 destroy:
+	@docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" -v "${PWD}"/passwd:/etc/passwd:ro -v "${PWD}"/terraform:/app -v /home/${USER}/.aws/credentials:/tmp/.aws/credentials:ro -e AWS_CONFIG_FILE=/tmp/.aws/credentials -e AWS_DEFAULT_REGION=${AWS_REGION} ${PROJECT}-${ENV}-${SERVICE}:terraform destroy -var="project=${PROJECT}" -var="service=${SERVICE}" -var="env=${ENV}" -auto-approve
 	@rm -rf app/.config/
 	@rm -rf app/.npm/
 	@rm -rf app/.scannerwork/
@@ -70,3 +78,8 @@ destroy:
 	@rm -rf app/package-lock.json
 	@rm -rf test/tmp/
 	@rm -rf passwd
+	@rm -rf terraform/.terraform/
+	@rm -rf terraform/.terraform.d/
+	@rm -rf terraform/.terraform.lock.hcl
+	@rm -rf terraform/terraform.tfstate
+	@rm -rf terraform/terraform.tfstate.backup

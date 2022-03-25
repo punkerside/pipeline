@@ -6,9 +6,9 @@ RUN apt-get update && apt-get install -y curl unzip openjdk-11-jdk openjdk-11-jr
 RUN curl -o sonar-scanner-cli-4.2.0.1873-linux.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.2.0.1873-linux.zip && \
   unzip sonar-scanner-cli-4.2.0.1873-linux.zip && mv sonar-scanner-4.2.0.1873-linux/ sonar-scanner/ && rm -rf sonar-scanner-cli-4.2.0.1873-linux.zip
 
-ARG SONAR_PROJECT
-ARG SONAR_ORGANIZATION
-ARG SONAR_TOKEN
+# ARG SONAR_PROJECT
+# ARG SONAR_ORGANIZATION
+# ARG SONAR_TOKEN
 
 ENV SONAR_PROJECT=${SONAR_PROJECT}
 ENV SONAR_ORGANIZATION=${SONAR_ORGANIZATION}

@@ -10,6 +10,14 @@
 | `DOCKER_USERNAME` | Usuario de Docker Hub | string | `null` | yes |
 | `DOCKER_PASSWORD` | Contraseña de Docker Hub | string | `null` | yes |
 
+## **Requisitos**
+
+1. Creando infraestructura cloud necesaria:
+
+```bash
+make terraform
+```
+
 ## **Uso**
 
 1. Creando imagenes de contenedores base y herramientas:
