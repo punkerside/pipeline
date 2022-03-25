@@ -2,11 +2,11 @@ PROJECT = sandbox
 ENV     = lab
 SERVICE = api
 
-DOCKER_UID  = $(shell id -u)
-DOCKER_GID  = $(shell id -g)
-DOCKER_USER = $(shell whoami)
-
-SONAR_PROJECT      = ${PROJECT}-${ENV}-${SERVICE}
+DOCKER_UID      = $(shell id -u)
+DOCKER_GID      = $(shell id -g)
+DOCKER_USER     = $(shell whoami)
+SONAR_PROJECT   = ${PROJECT}-${ENV}-${SERVICE}
+BUILD_TIMESTAMP = $(shell date +"%y%m%d%H%M%S")
 
 file_passwd:
 	@echo 'DOCKER_USER:x:DOCKER_UID:DOCKER_GID::/app:/sbin/nologin' > passwd
@@ -51,6 +51,15 @@ postman: file_passwd
 #	deteniendo compose
 	@export IMAGE=${PROJECT}-${ENV}-${SERVICE}:release && \
 	  docker-compose -p "${PROJECT}-${ENV}-${SERVICE}" -f docker-compose.yml down
+
+publish:
+	@[ "${DOCKER_USERNAME}" ] && echo "var DOCKER_USERNAME is set" || ( echo "var DOCKER_USERNAME is not set"; exit 1 )
+	@[ "${DOCKER_PASSWORD}" ] && echo "var DOCKER_PASSWORD is set" || ( echo "var DOCKER_PASSWORD is not set"; exit 1 )
+	@docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}
+	@docker tag ${PROJECT}-${ENV}-${SERVICE}:release punkerside/${PROJECT}-${ENV}-${SERVICE}:latest
+	@docker tag ${PROJECT}-${ENV}-${SERVICE}:release punkerside/${PROJECT}-${ENV}-${SERVICE}:${BUILD_TIMESTAMP}
+	@docker push punkerside/${PROJECT}-${ENV}-${SERVICE}:latest
+	@docker push punkerside/${PROJECT}-${ENV}-${SERVICE}:${BUILD_TIMESTAMP}
 
 destroy:
 	@rm -rf app/.config/
