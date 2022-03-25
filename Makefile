@@ -15,6 +15,7 @@ base:
 	@docker build --build-arg IMAGE=${PROJECT}-${ENV}-${SERVICE}:base -t ${PROJECT}-${ENV}-${SERVICE}:build -f docker/build/Dockerfile .
 	@docker build --build-arg IMAGE=${PROJECT}-${ENV}-${SERVICE}:base -t ${PROJECT}-${ENV}-${SERVICE}:postman -f docker/postman/Dockerfile .
 	@docker build -t ${PROJECT}-${ENV}-${SERVICE}:sonar -f docker/sonar/Dockerfile .
+	@docker build -t ${PROJECT}-${ENV}-${SERVICE}:snyk -f docker/snyk/Dockerfile .
 
 file_passwd:
 	@echo 'DOCKER_USER:x:DOCKER_UID:DOCKER_GID::/app:/sbin/nologin' > passwd
@@ -45,3 +46,14 @@ postman:
 
 sonar:
 	docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" --env SONAR_PROJECT=${SONAR_PROJECT} --env SONAR_ORGANIZATION=${SONAR_ORGANIZATION} --env SONAR_TOKEN=${SONAR_TOKEN} -v "${PWD}"/passwd:/etc/passwd:ro -v "${PWD}"/app:/app ${PROJECT}-${ENV}-${SERVICE}:sonar
+
+snyk:
+	docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" -e SNYK_TOKEN="${SNYK_TOKEN}" -v "${PWD}"/passwd:/etc/passwd:ro -v "${PWD}"/app:/app ${PROJECT}-${ENV}-${SERVICE}:snyk
+
+destroy:
+	rm -rf app/.config/
+	rm -rf app/.npm/
+	rm -rf app/.scannerwork/
+	rm -rf app/.sonar/
+	rm -rf app/node_modules/
+	rm -rf app/package-lock.json/
