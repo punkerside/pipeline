@@ -12,18 +12,24 @@
 
 ## **Requisitos**
 
-1. Creando infraestructura cloud necesaria:
+1. Creando imagenes de contenedor con herramientas:
 
 ```bash
-make terraform
+make base
+```
+
+2. Creando infraestructura cloud necesaria (VPC + EKS):
+
+```bash
+make cluster
 ```
 
 ## **Uso**
 
-1. Creando imagenes de contenedores base y herramientas:
+1. Análisis de código estático con SonarCloud:
 
 ```bash
-make base
+make sonar SONAR_ORGANIZATION=********** SONAR_TOKEN=**********
 ```
 
 2. Compilando código:
@@ -32,37 +38,31 @@ make base
 make build
 ```
 
-3. Análisis de código estático con SonarCloud:
-
-```bash
-make sonar SONAR_ORGANIZATION=********** SONAR_TOKEN=**********
-```
-
-4. Análisis de dependencias de código con Snyk:
+3. Análisis de dependencias de código con Snyk:
 
 ```bash
 make snyk SNYK_TOKEN=**********
 ```
 
-5. Empaquetando nueva version de imagen de contenedor:
+4. Empaquetando nueva version de imagen de contenedor:
 
 ```bash
 make release
 ```
 
-6. Pruebas funcionales con Postman y Newman:
+5. Pruebas funcionales con Postman y Newman:
 
 ```bash
 make postman
 ```
 
-7. Publicando imagen de contenedor en Docker Hub:
+6. Publicando nueva imagen de contenedor en Docker Hub:
 
 ```bash
 make publish DOCKER_USERNAME=********** DOCKER_PASSWORD=**********
 ```
 
-8. Desplegando nueva version de contenedor con ayuda de Helm:
+7. Desplegando nueva version de contenedor con ayuda de Helm:
 
 ```bash
 make deploy
