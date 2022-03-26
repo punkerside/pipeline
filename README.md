@@ -62,6 +62,12 @@ make postman
 make publish DOCKER_USERNAME=********** DOCKER_PASSWORD=**********
 ```
 
+8. Desplegando nueva version de contenedor con ayuda de Helm:
+
+```bash
+make deploy
+```
+
 ## **Destruir**
 
 Para eliminar toda la infraestructura y recursos asociados:

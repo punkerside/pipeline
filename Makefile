@@ -22,6 +22,12 @@ base:
 	@docker build -t ${PROJECT}-${ENV}-${SERVICE}:sonar -f docker/sonar/Dockerfile .
 	@docker build -t ${PROJECT}-${ENV}-${SERVICE}:snyk -f docker/snyk/Dockerfile .
 	@docker build -t ${PROJECT}-${ENV}-${SERVICE}:terraform -f docker/terraform/Dockerfile .
+	@docker build -t ${PROJECT}-${ENV}-${SERVICE}:helm -f docker/helm/Dockerfile .
+
+cluster: file_passwd
+	@docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" -v "${PWD}"/passwd:/etc/passwd:ro -v "${PWD}"/terraform:/app ${PROJECT}-${ENV}-${SERVICE}:terraform init
+	@docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" -v "${PWD}"/passwd:/etc/passwd:ro -v "${PWD}"/terraform:/app -v /home/${USER}/.aws/credentials:/tmp/.aws/credentials:ro -e AWS_CONFIG_FILE=/tmp/.aws/credentials -e AWS_DEFAULT_REGION=${AWS_REGION} ${PROJECT}-${ENV}-${SERVICE}:terraform plan -var="project=${PROJECT}" -var="service=${SERVICE}" -var="env=${ENV}"
+	@docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" -v "${PWD}"/passwd:/etc/passwd:ro -v "${PWD}"/terraform:/app -v /home/${USER}/.aws/credentials:/tmp/.aws/credentials:ro -e AWS_CONFIG_FILE=/tmp/.aws/credentials -e AWS_DEFAULT_REGION=${AWS_REGION} ${PROJECT}-${ENV}-${SERVICE}:terraform apply -var="project=${PROJECT}" -var="service=${SERVICE}" -var="env=${ENV}" -auto-approve
 
 build: file_passwd
 	@docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" -v "${PWD}"/passwd:/etc/passwd:ro -v "${PWD}"/app:/app ${PROJECT}-${ENV}-${SERVICE}:build
@@ -63,10 +69,17 @@ publish:
 	@docker push punkerside/${PROJECT}-${ENV}-${SERVICE}:latest
 	@docker push punkerside/${PROJECT}-${ENV}-${SERVICE}:${BUILD_TIMESTAMP}
 
-terraform: file_passwd
-	@docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" -v "${PWD}"/passwd:/etc/passwd:ro -v "${PWD}"/terraform:/app ${PROJECT}-${ENV}-${SERVICE}:terraform init
-	@docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" -v "${PWD}"/passwd:/etc/passwd:ro -v "${PWD}"/terraform:/app -v /home/${USER}/.aws/credentials:/tmp/.aws/credentials:ro -e AWS_CONFIG_FILE=/tmp/.aws/credentials -e AWS_DEFAULT_REGION=${AWS_REGION} ${PROJECT}-${ENV}-${SERVICE}:terraform plan -var="project=${PROJECT}" -var="service=${SERVICE}" -var="env=${ENV}"
-	@docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" -v "${PWD}"/passwd:/etc/passwd:ro -v "${PWD}"/terraform:/app -v /home/${USER}/.aws/credentials:/tmp/.aws/credentials:ro -e AWS_CONFIG_FILE=/tmp/.aws/credentials -e AWS_DEFAULT_REGION=${AWS_REGION} ${PROJECT}-${ENV}-${SERVICE}:terraform apply -var="project=${PROJECT}" -var="service=${SERVICE}" -var="env=${ENV}" -auto-approve
+deploy: file_passwd
+	@docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" \
+	  -v "${PWD}"/passwd:/etc/passwd:ro \
+	  -v "${PWD}"/helm:/app \
+	  -v /home/${USER}/.aws/credentials:/tmp/.aws/credentials:ro \
+	  -e AWS_CONFIG_FILE=/tmp/.aws/credentials \
+	  -e AWS_REGION=${AWS_REGION} \
+	  -e EKS_CLUSTER=${PROJECT}-${ENV} \
+	  -e EKS_SERVICE=${PROJECT}-${ENV}-${SERVICE} \
+	  -e IMAGE_URI=punkerside/${PROJECT}-${ENV}-${SERVICE}:latest \
+	${PROJECT}-${ENV}-${SERVICE}:helm
 
 destroy:
 	@docker run --rm -u "${DOCKER_UID}":"${DOCKER_GID}" -v "${PWD}"/passwd:/etc/passwd:ro -v "${PWD}"/terraform:/app -v /home/${USER}/.aws/credentials:/tmp/.aws/credentials:ro -e AWS_CONFIG_FILE=/tmp/.aws/credentials -e AWS_DEFAULT_REGION=${AWS_REGION} ${PROJECT}-${ENV}-${SERVICE}:terraform destroy -var="project=${PROJECT}" -var="service=${SERVICE}" -var="env=${ENV}" -auto-approve

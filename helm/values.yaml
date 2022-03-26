@@ -1,0 +1,25 @@
+name: api
+spec:
+  namespace: default
+  replicas: 2
+  minReplicas: 1
+  maxReplicas: 3
+  automountServiceAccountToken: false
+  containers:
+    image: punkerside/noroot@sha256:6d61aad7c123500d75f112c070f08ece97137814cc4a04b6e5ac7f4bd15a3839
+    imagePullPolicy: Always
+    cpu: 100m
+    memory: 200Mi
+    containerPort: 3000
+    servicePort: 80
+    serviceProtocol: TCP
+    probe: /
+    initialDelaySeconds: 5
+    periodSeconds: 3
+    averageUtilizationCpu: 85
+    averageUtilizationMemory: 85
+    runAsUser: 10000
+    runAsGroup: 10000
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilitiesDrop: ALL

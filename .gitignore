@@ -13,3 +13,4 @@ test/tmp/
 terraform.tfstate
 terraform.tfstate.backup
 .aws/
+.kube/

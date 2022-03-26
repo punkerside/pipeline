@@ -23,7 +23,6 @@ resource "aws_eks_cluster" "this" {
   }
 }
 
-# iam role
 resource "aws_iam_role" "this" {
   name = "${var.project}-${var.env}"
   path = "/"
@@ -35,7 +34,7 @@ resource "aws_iam_role" "this" {
     {
       "Action": "sts:AssumeRole",
       "Principal": {
-        "Service": ["eks.amazonaws.com"]
+        "Service": ["eks.amazonaws.com", "eks-fargate-pods.amazonaws.com"]
       },
       "Effect": "Allow",
       "Sid": ""
@@ -55,4 +54,22 @@ resource "aws_iam_role_policy_attachment" "this" {
   count      = length(var.policy_arn)
   policy_arn = var.policy_arn[count.index]
   role       = aws_iam_role.this.name
+}
+
+resource "aws_eks_fargate_profile" "this" {
+  cluster_name           = aws_eks_cluster.this.name
+  fargate_profile_name   = "main"
+  pod_execution_role_arn = aws_iam_role.this.arn
+  subnet_ids             = aws_subnet.private.*.id
+
+  selector {
+    namespace = "kube-system"
+    labels = {
+      k8s-app = "kube-dns"
+    }
+  }
+
+  selector {
+    namespace = "default"
+  }
 }
